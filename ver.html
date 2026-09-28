@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Horario de Reunión</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            text-align: center;
+            padding: 40px;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0px 4px 15px rgba(0,0,0,0.1);
+            max-width: 450px;
+            margin: 0 auto;
+        }
+        h1 { color: #007bff; font-size: 22px; }
+        .time-box {
+            font-size: 32px;
+            font-weight: bold;
+            color: #28a745;
+            margin: 15px 0;
+        }
+        .error { color: #dc3545; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>Reunión</h1> <!-- Título limpio sin "Internacional" -->
+        <p>La fecha y hora fijada de origen es:</p>
+        <p><strong id="displayBaseDateTime">--</strong></p>
+        
+        <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
+
+        <p>En tu hora local, la reunión será el:</p>
+        <p><strong id="localDate" style="color: #333;">Calculando...</strong></p>
+        <div class="time-box" id="localTime">--:--</div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const paramDate = urlParams.get('fecha');
+        const paramTime = urlParams.get('hora');
+        const paramZone = urlParams.get('zona');
+
+        if (!paramDate || !paramTime || !paramZone) {
+            document.querySelector('.card').innerHTML = '<h1 class="error">Enlace inválido o incompleto.</h1><p>Por favor genera un enlace correcto desde el panel principal.</p>';
+        } else {
+            calculateGuestTime(paramDate, paramTime, paramZone);
+        }
+
+        function calculateGuestTime(dateInput, timeInput, timeZone) {
+            // Formatear hora base en 12h
+            const [origH, origM] = timeInput.split(':').map(Number);
+            let ampmBase = origH >= 12 ? 'PM' : 'AM';
+            let displayHBase = origH % 12;
+            displayHBase = displayHBase ? displayHBase : 12;
+            let formattedMBase = String(origM).padStart(2, '0');
+
+            // Formatear fecha base de origen de forma legible
+            const [year, month, day] = dateInput.split('-').map(Number);
+            const baseDateObj = new Date(year, month - 1, day);
+            const optionsBaseDate = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const formattedBaseDateStr = baseDateObj.toLocaleDateString('es-ES', optionsBaseDate);
+
+            document.getElementById('displayBaseDateTime').innerText = `${formattedBaseDateStr} a las ${displayHBase}:${formattedMBase} ${ampmBase} (${timeZone})`;
+
+            // Crear objeto de fecha exacto basado en la zona horaria seleccionada
+            const isoString = `${dateInput}T${timeInput}:00`;
+            
+            // Truco para calcular la hora exacta en la zona del visitante usando UTC/Timezone offset
+            const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            
+            // Creamos un objeto de fecha considerando la zona horaria de origen
+            const targetDate = new Date(new Intl.DateTimeFormat('en-US', {
+                timeZone: timeZone,
+                year: 'numeric', month: 'numeric', day: 'numeric',
+                hour: 'numeric', minute: 'numeric', second: 'numeric',
+                hour12: false
+            }).format(new Date(isoString))); // Usamos un aproximado seguro para la diferencia
+
+            // Método robusto basado en diferencia de minutos de las zonas
+            const d = new Date();
+            const localString = d.toLocaleString('en-US', { timeZone: userTimeZone });
+            const originString = d.toLocaleString('en-US', { timeZone: timeZone });
+            const diffMinutes = (new Date(localString) - new Date(originString)) / (1000 * 60);
+
+            let totalM = origH * 60 + origM + diffMinutes;
+            
+            // Manejo de cambio de día si aplica
+            let dayOffset = 0;
+            if (totalM < 0) {
+                totalM += 1440;
+                dayOffset = -1;
+            } else if (totalM >= 1440) {
+                totalM = totalM % 1440;
+                dayOffset = 1;
+            }
+
+            let finalH = Math.floor(totalM / 60);
+            let finalM = Math.round(totalM % 60);
+            
+            let finalAmpm = finalH >= 12 ? 'PM' : 'AM';
+            let displayH = finalH % 12;
+            displayH = displayH ? displayH : 12;
+            let formattedM = String(finalM).padStart(2, '0');
+
+            document.getElementById('localTime').innerText = `${displayH}:${formattedM} ${finalAmpm}`;
+
+            // Calcular la fecha ajustada para el visitante
+            const adjustedDate = new Date(year, month - 1, day);
+            adjustedDate.setDate(adjustedDate.getDate() + dayOffset);
+            
+            const optionsUserDate = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('localDate').innerText = adjustedDate.toLocaleDateString('es-ES', optionsUserDate);
+        }
+    </script>
+
+</body>
+</html>

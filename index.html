@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creador de Horarios - Panel</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            text-align: center;
+            padding: 40px;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0px 4px 15px rgba(0,0,0,0.1);
+            max-width: 450px;
+            margin: 0 auto;
+        }
+        h1 { color: #007bff; font-size: 22px; }
+        label { display: block; font-size: 14px; margin: 15px 0 5px; font-weight: bold; text-align: left; }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 12px;
+            width: 100%;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        button:hover { background-color: #218838; }
+        .copy-btn {
+            background-color: #007bff;
+            margin-top: 10px;
+        }
+        .copy-btn:hover { background-color: #0056b3; }
+        .link-output {
+            margin-top: 20px;
+            background: #eef2f7;
+            padding: 15px;
+            border-radius: 6px;
+            display: none;
+            text-align: left;
+        }
+        input.link-box {
+            background: #fff;
+            color: #333;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>Crear Enlace de Horario</h1>
+        <p style="font-size: 14px; color: #666;">Configura la fecha, hora y zona. Tus datos se guardarán automáticamente.</p>
+        
+        <label for="inputDate">Fecha de la reunión:</label>
+        <input type="date" id="inputDate" onchange="saveToMemory()">
+
+        <label for="inputTime">Hora base (Formato 24h):</label>
+        <input type="time" id="inputTime" value="19:00" onchange="saveToMemory()">
+
+        <label for="inputZone">Zona horaria de origen:</label>
+        <select id="inputZone" onchange="saveToMemory()">
+            <option value="America/New_York" selected>Florida / Este de EE. UU. (EST/EDT)</option>
+            <option value="America/Bogota">Bogotá / Lima / Quito</option>
+            <option value="America/Santiago">Santiago de Chile</option>
+            <option value="America/Mexico_City">Ciudad de México</option>
+            <option value="Europe/Madrid">Madrid, España</option>
+            <option value="UTC">UTC / Hora Universal</option>
+        </select>
+
+        <button onclick="generateLink()">Generar Enlace</button>
+        
+        <div id="linkContainer" class="link-output">
+            <strong>¡Enlace creado con éxito!</strong><br><br>
+            <input type="text" id="generatedLinkInput" class="link-box" readonly>
+            <button class="copy-btn" onclick="copyLink()">Copiar Enlace al Portapapeles</button>
+        </div>
+    </div>
+
+    <script>
+        // Al cargar la página, recuperamos los datos guardados en la memoria del navegador
+        window.onload = function() {
+            const savedDate = localStorage.getItem('saved_date');
+            const savedTime = localStorage.getItem('saved_time');
+            const savedZone = localStorage.getItem('saved_zone');
+
+            if (savedDate) {
+                document.getElementById('inputDate').value = savedDate;
+            } else {
+                document.getElementById('inputDate').valueAsDate = new Date();
+            }
+
+            if (savedTime) {
+                document.getElementById('inputTime').value = savedTime;
+            }
+
+            if (savedZone) {
+                document.getElementById('inputZone').value = savedZone;
+            }
+        };
+
+        // Función para guardar automáticamente cada vez que cambias un valor
+        function saveToMemory() {
+            const date = document.getElementById('inputDate').value;
+            const time = document.getElementById('inputTime').value;
+            const zone = document.getElementById('inputZone').value;
+
+            localStorage.setItem('saved_date', date);
+            localStorage.setItem('saved_time', time);
+            localStorage.setItem('saved_zone', zone);
+        }
+
+        function generateLink() {
+            const date = document.getElementById('inputDate').value;
+            const time = document.getElementById('inputTime').value;
+            const zone = document.getElementById('inputZone').value;
+
+            if (!date || !time) {
+                alert('Por favor selecciona una fecha y una hora válidas.');
+                return;
+            }
+
+            // Guardar por si acaso antes de generar
+            saveToMemory();
+
+            // Calculamos la URL base apuntando a ver.html
+            const currentUrl = window.location.href;
+            const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/') + 1);
+            const finalLink = `${baseUrl}ver.html?fecha=${date}&hora=${time}&zona=${encodeURIComponent(zone)}`;
+
+            const linkInput = document.getElementById('generatedLinkInput');
+            linkInput.value = finalLink;
+
+            document.getElementById('linkContainer').style.display = 'block';
+        }
+
+        async function copyLink() {
+            const linkInput = document.getElementById('generatedLinkInput');
+            
+            try {
+                // Método moderno y seguro para forzar el copiado al portapapeles
+                await navigator.clipboard.writeText(linkInput.value);
+                alert('¡Enlace copiado al portapapeles con éxito! Ya puedes pegarlo en WhatsApp o correo.');
+            } catch (err) {
+                // Plan B por si el navegador exige selección manual
+                linkInput.select();
+                linkInput.setSelectionRange(0, 99999);
+                document.execCommand('copy');
+                alert('¡Enlace seleccionado y copiado!');
+            }
+        }
+    </script>
+
+</body>
+</html>
